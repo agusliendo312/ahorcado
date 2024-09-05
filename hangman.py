@@ -1,6 +1,8 @@
 import random
 import os  # Necesario para limpiar la pantalla
 from words import word_list
+from codecarbon import EmissionsTracker  # Importamos codecarbon
+import pandas as pd  # Para leer el archivo emissions.csv con pandas
 
 
 def get_word():
@@ -31,11 +33,11 @@ def play(word):
             if guess in guessed_letters:
                 print("Ya ha ingresado esa letra previamente", guess)
             elif guess not in word:
-                print(guess, "No esta en la palabra.")
+                print(guess, "No está en la palabra.")
                 tries -= 1
                 guessed_letters.append(guess)
             else:
-                print("Bien ahí,", guess, "si esta en la palabra!")
+                print("Bien ahí,", guess, "sí está en la palabra!")
                 guessed_letters.append(guess)
                 word_as_list = list(word_completion)
                 indices = [i for i, letter in enumerate(word) if letter == guess]
@@ -46,16 +48,16 @@ def play(word):
                     guessed = True
         elif len(guess) == len(word) and guess.isalpha():
             if guess in guessed_words:
-                print("Ganaste!", guess)
+                print("Ya intentaste esa palabra antes", guess)
             elif guess != word:
-                print(guess, "No esta en la palabra.")
+                print(guess, "No es la palabra.")
                 tries -= 1
                 guessed_words.append(guess)
             else:
                 guessed = True
                 word_completion = word
         else:
-            print("Ingresaste un caracter no valido.")
+            print("Ingresaste un carácter no válido.")
         print(display_hangman(tries))
         print(word_completion)
 
@@ -63,9 +65,9 @@ def play(word):
         print("Letras ingresadas: ", " - ".join(guessed_letters))
         print("\n")
     if guessed:
-        print("Felicidades, adivinaste la palabra!")
+        print("¡Felicidades, adivinaste la palabra!")
     else:
-        print("Te quedaste sin intentos :(  \n La palabra era " + word + ".")
+        print("Te quedaste sin intentos :(  \nLa palabra era " + word + ".")
 
 
 def display_hangman(tries):
@@ -142,16 +144,45 @@ def display_hangman(tries):
     ]
     return stages[tries]
 
+def mostrar_emisiones():
+    """Función para leer y mostrar el contenido del archivo emissions.csv usando pandas"""
+    try:
+        df = pd.read_csv('emissions.csv')
+        # Lista de columnas a mostrar
+        columnas = [
+            'timestamp', 'duration', 'emissions', 'emissions_rate', 'cpu_power',
+            'gpu_power', 'ram_power', 'cpu_energy', 'gpu_energy', 'ram_energy',
+            'energy_consumed', 'country_name', 'country_iso_code', 'region',
+            'os', 'python_version', 'codecarbon_version', 'tracking_mode'
+        ]
+        # Verificar si las columnas existen en el DataFrame
+        columnas_existentes = [col for col in columnas if col in df.columns]
+        if columnas_existentes:
+            print("\n--- Emisiones de Carbono Registradas ---\n")
+            print(df[columnas_existentes])
+        else:
+            print("Las columnas solicitadas no están presentes en el archivo.")
+    except FileNotFoundError:
+        print("No se encontró el archivo 'emissions.csv'.")
 
 def main():
-    limpiar_pantalla()
-    word = get_word()
-    play(word)
-    while input("Play Again? (S/N) ").upper() == "S":
-        limpiar_pantalla()
-        word = get_word()
-        play(word)
+    # Iniciar el rastreador de emisiones con log_level a 'CRITICAL'
+    tracker = EmissionsTracker(log_level="CRITICAL")
+    tracker.start()
+    
+    try:
+        while True:
+            limpiar_pantalla()
+            word = get_word()
+            play(word)
+            if input("¿Jugar otra vez? (S/N) ").upper() != "S":
+                break
+    finally:
+        # Detener el rastreador de emisiones
+        tracker.stop()
 
+        # Mostrar el contenido de emissions.csv
+        mostrar_emisiones()
 
 if __name__ == "__main__":
     main()
